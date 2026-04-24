@@ -1,5 +1,6 @@
 import mysql.connector
-from flask import Flask, render_template, request, redirect, session, jsonify
+# Triggering restart for Reviews, Bookings & Payments
+from flask import Flask, render_template, request, redirect, session, jsonify, flash
 from setup_vendors import setup_vendors
 
 app = Flask(__name__)
@@ -284,6 +285,7 @@ def vendors():
         return redirect("/")
         
     category = request.args.get("category")
+    event_id = request.args.get("event_id")
     db = get_db()
     cursor = db.cursor()
     
@@ -301,7 +303,11 @@ def vendors():
     cursor.close()
     db.close()
     
-    return render_template("vendors.html", vendors=vendors_list, categories=categories, active_cat=category or "All")
+    return render_template("vendors.html", 
+                           vendors=vendors_list, 
+                           categories=categories, 
+                           active_cat=category or "All",
+                           event_id=event_id)
 
 # GUEST MANAGEMENT
 @app.route("/add_guest/<int:event_id>", methods=["POST"])
@@ -357,27 +363,139 @@ def delete_timeline(id, event_id):
     db.close()
     return redirect(f"/event/{event_id}")
 
-# QUICK LINK VENDOR
+# QUICK LINK VENDOR (Direct from recommendation)
 @app.route("/link_vendor/<int:v_id>/<int:e_id>")
 def link_vendor(v_id, e_id):
     db = get_db()
     cursor = db.cursor()
-    
-    # 1. Fetch Vendor Details
     cursor.execute("SELECT name, category, price FROM vendors WHERE id=%s", (v_id,))
     vendor = cursor.fetchone()
-    
     if vendor:
-        # 2. Add as Expense (Auto-deduct price)
         cursor.execute(
             "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (%s, %s, %s, %s, %s)",
             (vendor[1], vendor[0], vendor[2], e_id, v_id)
         )
         db.commit()
-        
     cursor.close()
     db.close()
     return redirect(f"/event/{e_id}")
+
+# BULK LINK VENDORS
+@app.route("/link_vendors_bulk", methods=["POST"])
+def link_vendors_bulk():
+    event_id = request.form.get("event_id")
+    vendor_ids = request.form.get("vendor_ids").split(",")
+    db = get_db()
+    cursor = db.cursor()
+    for v_id in vendor_ids:
+        cursor.execute("SELECT name, category, price FROM vendors WHERE id=%s", (v_id,))
+        vendor = cursor.fetchone()
+        if vendor:
+            cursor.execute(
+                "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (%s, %s, %s, %s, %s)",
+                (vendor[1], vendor[0], vendor[2], event_id, v_id)
+            )
+    db.commit()
+    cursor.close()
+    db.close()
+    return redirect(f"/event/{event_id}")
+
+# VENDOR DETAILS & REVIEWS
+@app.route("/vendor/<int:id>")
+def vendor_details_view(id):
+    if "user" not in session: return redirect("/")
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM vendors WHERE id=%s", (id,))
+    vendor = cursor.fetchone()
+    cursor.execute("SELECT vendor_reviews.*, users.email FROM vendor_reviews JOIN users ON vendor_reviews.user_id = users.id WHERE vendor_id=%s ORDER BY created_at DESC", (id,))
+    reviews = cursor.fetchall()
+    
+    # Get user events for booking dropdown
+    cursor.execute("SELECT id, name FROM events WHERE user_id=%s", (session["user"],))
+    events = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+    return render_template("vendor_details.html", vendor=vendor, reviews=reviews, events=events)
+
+@app.route("/add_review/<int:v_id>", methods=["POST"])
+def add_review(v_id):
+    if "user" not in session: return redirect("/")
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO vendor_reviews (vendor_id, user_id, rating, comment) VALUES (%s, %s, %s, %s)",
+                   (v_id, session["user"], request.form["rating"], request.form["comment"]))
+    db.commit()
+    cursor.close()
+    db.close()
+    return redirect(f"/vendor/{v_id}")
+
+# BOOKING & PAYMENTS
+@app.route("/book_vendor", methods=["POST"])
+def book_vendor():
+    if "user" not in session: return redirect("/")
+    v_id = request.form.get("vendor_id")
+    e_id = request.form.get("event_id")
+    amount = request.form.get("amount")
+    advance = request.form.get("advance")
+    
+    db = get_db()
+    cursor = db.cursor()
+    # Create Booking Record
+    cursor.execute("""
+        INSERT INTO bookings (user_id, event_id, vendor_id, total_amount, advance_paid, status)
+        VALUES (%s, %s, %s, %s, %s, 'Confirmed')
+    """, (session["user"], e_id, v_id, amount, advance))
+    
+    # Also add to expenses automatically
+    cursor.execute("SELECT name, category FROM vendors WHERE id=%s", (v_id,))
+    vendor = cursor.fetchone()
+    cursor.execute(
+        "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (%s, %s, %s, %s, %s)",
+        (vendor[1], vendor[0], amount, e_id, v_id)
+    )
+    
+    db.commit()
+    cursor.close()
+    db.close()
+    return render_template("payment_success.html", amount=advance)
+
+@app.route("/bookings")
+def view_bookings():
+    if "user" not in session: return redirect("/")
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT bookings.*, vendors.name, vendors.category, vendors.image_url 
+        FROM bookings 
+        JOIN vendors ON bookings.vendor_id = vendors.id 
+        WHERE bookings.user_id = %s ORDER BY created_at DESC
+    """, (session["user"],))
+    bookings_list = cursor.fetchall()
+    cursor.close()
+    db.close()
+    return render_template("bookings.html", bookings=bookings_list)
+
+@app.route("/cancel_booking/<int:id>")
+def cancel_booking(id):
+    if "user" not in session: return redirect("/")
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Get advance amount for the message
+    cursor.execute("SELECT advance_paid FROM bookings WHERE id=%s", (id,))
+    booking = cursor.fetchone()
+    
+    if booking:
+        advance = booking[0]
+        cursor.execute("DELETE FROM bookings WHERE id=%s AND user_id=%s", (id, session["user"]))
+        db.commit()
+        flash(f"Booking removed successfully! Your advance payment of ₹{advance} will be refunded to your original payment method within 24 hours.", "success")
+    
+    cursor.close()
+    db.close()
+    return redirect("/bookings")
 
 if __name__ == "__main__":
     # Initialize vendors data if needed or for demo purposes

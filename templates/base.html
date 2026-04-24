@@ -29,6 +29,10 @@
                 <i class="fas fa-search-dollar"></i>
                 <span>Find Vendors</span>
             </a>
+            <a href="/bookings" class="nav-item {% if request.path == '/bookings' %}active{% endif %}">
+                <i class="fas fa-history"></i>
+                <span>My Bookings</span>
+            </a>
             <a href="/add_expense" class="nav-item {% if request.path == '/add_expense' %}active{% endif %}">
                 <i class="fas fa-receipt"></i>
                 <span>Add Expense</span>
