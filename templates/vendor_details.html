@@ -224,7 +224,7 @@
                         const upiName = document.getElementById('upiName');
                         
                         const qrCodeImg = document.getElementById('qrCodeImg');
-                        const isAuroStudio = "{{ vendor[1]|lower }}" === "auro studio";
+                        const isAuraStudio = "{{ vendor[1]|lower }}" === "aura studio";
                         const customQrUrl = "{{ url_for('static', filename='img/adhi_gpay_qr.jpg') }}";
                         const mockQrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=mock@upi&pn=BudgetCrafter&am={{ (vendor[3] * 0.2)|int }}&cu=INR";
                         
@@ -237,7 +237,7 @@
                             upiName.innerText = method === 'gpay' ? 'G-Pay' : (method === 'phonepe' ? 'PhonePe' : 'Paytm');
                             
                             if (qrCodeImg) {
-                                if (method === 'gpay' && isAuroStudio) {
+                                if (method === 'gpay' && isAuraStudio) {
                                     qrCodeImg.src = customQrUrl;
                                     qrCodeImg.style.width = '150px';
                                     qrCodeImg.style.height = '150px';
