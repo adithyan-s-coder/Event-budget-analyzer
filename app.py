@@ -15,9 +15,9 @@ def get_db():
     if not db_url:
         db_url = "postgresql://postgres:root%402412200@db.jnpkbyspcekjphfzlncx.supabase.co:5432/postgres"
     
-    # If the user accidentally pasted the URL with brackets from Supabase, fix it!
-    if "[root@2412200]" in db_url:
-        db_url = db_url.replace("[root@2412200]", "root%402412200")
+    # If the user accidentally pasted the URL with brackets or unencoded @ from Supabase, fix it!
+    db_url = db_url.replace("[root@2412200]", "root%402412200")
+    db_url = db_url.replace("root@2412200", "root%402412200")
         
     conn = psycopg2.connect(db_url)
     return conn
