@@ -92,7 +92,7 @@ def register():
             db.commit()
             session.pop("otp", None) # clear OTP
             session.pop("otp_phone", None)
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             return render_template("register.html", error="This Mobile number is already registered.")
         finally:
             cursor.close()
@@ -417,7 +417,7 @@ def vendor_register():
         cursor.execute("INSERT INTO vendors (name, category, price, rating, phone, password, description, business_proof_text, business_proof_file, is_verified) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                        (business_name, category, 5000, 5.0, phone, password, "New business on BudgetCrafter!", proof_text, filename, 1))
         db.commit()
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
         return render_template("register.html", error="This Mobile number is already registered by another vendor.", is_vendor=True, form_data=form_data)
     finally:
         db.close()

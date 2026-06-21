@@ -388,6 +388,8 @@
         
         {% if is_vendor %}
         setRole('vendor');
+        {% else %}
+        setRole('planner');
         {% endif %}
 
         function sendOTP() {
