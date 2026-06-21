@@ -13,7 +13,7 @@ def update_db():
         print(f"Column might already exist: {e}")
         
     # Set default password for existing vendors
-    cursor.execute("UPDATE vendors SET password = ?", ("vendor123",))
+    cursor.execute("UPDATE vendors SET password = %s", ("vendor123",))
     db.commit()
     print("Set default password vendor123 for all existing vendors.")
     

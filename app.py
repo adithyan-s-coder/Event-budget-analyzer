@@ -6,14 +6,16 @@ import os
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# DATABASE CONNECTION
-DB_PATH = "/tmp/event_app.db" if os.environ.get("VERCEL") else "event_app.db"
+import psycopg2
+import psycopg2.extras
 
+# DATABASE CONNECTION
 def get_db():
-    if not os.path.exists(DB_PATH):
-        import init_db
-        init_db.init_db(DB_PATH)
-    return sqlite3.connect(DB_PATH)
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        db_url = "postgresql://postgres:root%402412200@db.jnpkbyspcekjphfzlncx.supabase.co:5432/postgres"
+    conn = psycopg2.connect(db_url)
+    return conn
 
 # LOGIN
 @app.route("/")
@@ -28,7 +30,7 @@ def login():
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "SELECT * FROM users WHERE phone=?",
+            "SELECT * FROM users WHERE phone=%s",
             (request.form["phone"],)
         )
         user = cursor.fetchone()
@@ -84,7 +86,7 @@ def register():
         cursor = db.cursor()
         try:
             cursor.execute(
-                "INSERT INTO users (phone, password) VALUES (?, ?)",
+                "INSERT INTO users (phone, password) VALUES (%s, %s)",
                 (phone, hashed_pw)
             )
             db.commit()
@@ -108,14 +110,14 @@ def dashboard():
     cursor = db.cursor()
     
     # Get user's events
-    cursor.execute("SELECT * FROM events WHERE user_id=?", (session["user"],))
+    cursor.execute("SELECT * FROM events WHERE user_id=%s", (session["user"],))
     events = cursor.fetchall()
 
     # Aggregate stats for all user events
     cursor.execute("""
         SELECT SUM(amount) FROM expenses 
         JOIN events ON expenses.event_id = events.id 
-        WHERE events.user_id = ?
+        WHERE events.user_id = %s
     """, (session["user"],))
     total_spent = cursor.fetchone()[0] or 0
     
@@ -126,7 +128,7 @@ def dashboard():
     cursor.execute("""
         SELECT category, SUM(amount) FROM expenses 
         JOIN events ON expenses.event_id = events.id 
-        WHERE events.user_id = ?
+        WHERE events.user_id = %s
         GROUP BY category
     """, (session["user"],))
     global_cat_summary = cursor.fetchall()
@@ -151,18 +153,18 @@ def event_details(id):
     cursor = db.cursor()
     
     # Verify ownership
-    cursor.execute("SELECT * FROM events WHERE id=? AND user_id=?", (id, session["user"]))
+    cursor.execute("SELECT * FROM events WHERE id=%s AND user_id=%s", (id, session["user"]))
     event = cursor.fetchone()
     
     if not event:
         return "Access Denied", 403
 
     # Get expenses for this event
-    cursor.execute("SELECT * FROM expenses WHERE event_id=?", (id,))
+    cursor.execute("SELECT * FROM expenses WHERE event_id=%s", (id,))
     expenses = cursor.fetchall()
     
     # Get tasks for this event
-    cursor.execute("SELECT * FROM tasks WHERE event_id=?", (id,))
+    cursor.execute("SELECT * FROM tasks WHERE event_id=%s", (id,))
     tasks = cursor.fetchall()
 
     total_budget = event[3]
@@ -179,7 +181,7 @@ def event_details(id):
 
     for category, limit in category_limits.items():
         cursor.execute(
-            "SELECT * FROM vendors WHERE category=? AND price<=? ORDER BY price DESC LIMIT 1",
+            "SELECT * FROM vendors WHERE category=%s AND price<=%s ORDER BY price DESC LIMIT 1",
             (category, limit)
         )
         vendor = cursor.fetchone()
@@ -189,16 +191,16 @@ def event_details(id):
     # Category summaries
     cursor.execute("""
         SELECT category, SUM(amount) FROM expenses 
-        WHERE event_id=? GROUP BY category
+        WHERE event_id=%s GROUP BY category
     """, (id,))
     cat_summary = cursor.fetchall()
 
     # GET GUESTS
-    cursor.execute("SELECT * FROM guests WHERE event_id=?", (id,))
+    cursor.execute("SELECT * FROM guests WHERE event_id=%s", (id,))
     guests = cursor.fetchall()
 
     # GET TIMELINE
-    cursor.execute("SELECT * FROM timeline WHERE event_id=? ORDER BY time ASC", (id,))
+    cursor.execute("SELECT * FROM timeline WHERE event_id=%s ORDER BY time ASC", (id,))
     timeline = cursor.fetchall()
 
     # --- Predictive AI Cost Overrun Logic ---
@@ -258,7 +260,7 @@ def vendor_login():
 
     db = sqlite3.connect("event_app.db")
     cursor = db.cursor()
-    cursor.execute("SELECT * FROM vendors WHERE phone=? AND password=?", (phone, password))
+    cursor.execute("SELECT * FROM vendors WHERE phone=%s AND password=%s", (phone, password))
     vendor = cursor.fetchone()
     db.close()
 
@@ -412,7 +414,7 @@ def vendor_register():
     cursor = db.cursor()
     try:
         # Default price and rating for new vendors
-        cursor.execute("INSERT INTO vendors (name, category, price, rating, phone, password, description, business_proof_text, business_proof_file, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        cursor.execute("INSERT INTO vendors (name, category, price, rating, phone, password, description, business_proof_text, business_proof_file, is_verified) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                        (business_name, category, 5000, 5.0, phone, password, "New business on BudgetCrafter!", proof_text, filename, 1))
         db.commit()
     except sqlite3.IntegrityError:
@@ -431,7 +433,7 @@ def vendor_dashboard():
     cursor = db.cursor()
     
     # Get Vendor details
-    cursor.execute("SELECT * FROM vendors WHERE id=?", (session["vendor_id"],))
+    cursor.execute("SELECT * FROM vendors WHERE id=%s", (session["vendor_id"],))
     vendor = cursor.fetchone()
     
     # Get Bookings for this vendor
@@ -440,7 +442,7 @@ def vendor_dashboard():
         FROM bookings 
         JOIN events ON bookings.event_id = events.id
         JOIN users ON bookings.user_id = users.id
-        WHERE bookings.vendor_id=?
+        WHERE bookings.vendor_id=%s
         ORDER BY bookings.created_at DESC
     ''', (session["vendor_id"],))
     bookings = cursor.fetchall()
@@ -456,7 +458,7 @@ def update_booking_status(id, status):
         
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("UPDATE bookings SET status=? WHERE id=? AND vendor_id=?", (status, id, session["vendor_id"]))
+    cursor.execute("UPDATE bookings SET status=%s WHERE id=%s AND vendor_id=%s", (status, id, session["vendor_id"]))
     db.commit()
     cursor.close()
     db.close()
@@ -473,7 +475,7 @@ def create_event():
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "INSERT INTO events (name, type, budget, user_id) VALUES (?, ?, ?, ?)",
+            "INSERT INTO events (name, type, budget, user_id) VALUES (%s, %s, %s, %s)",
             (request.form["event_name"], request.form["event_type"], request.form["budget"], session["user_id"])
         )
         db.commit()
@@ -493,7 +495,7 @@ def add_expense():
     
     if request.method == "POST":
         cursor.execute(
-            "INSERT INTO expenses (category, item, amount, event_id) VALUES (?, ?, ?, ?)",
+            "INSERT INTO expenses (category, item, amount, event_id) VALUES (%s, %s, %s, %s)",
             (request.form["category"], request.form["item"], request.form["amount"], request.form["event_id"])
         )
         db.commit()
@@ -502,7 +504,7 @@ def add_expense():
         return redirect(f"/event/{request.form['event_id']}")
     
     # For GET: fetch events to populate dropdown
-    cursor.execute("SELECT id, name FROM events WHERE user_id=?", (session["user"],))
+    cursor.execute("SELECT id, name FROM events WHERE user_id=%s", (session["user"],))
     user_events = cursor.fetchall()
     cursor.close()
     db.close()
@@ -514,7 +516,7 @@ def add_expense():
 def add_task(event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("INSERT INTO tasks (event_id, description) VALUES (?, ?)", 
+    cursor.execute("INSERT INTO tasks (event_id, description) VALUES (%s, %s)", 
                    (event_id, request.form["description"]))
     db.commit()
     cursor.close()
@@ -526,7 +528,7 @@ def toggle_task(id, event_id):
     db = get_db()
     cursor = db.cursor()
     # SQLite uses 1/0 for true/false or NOT operator
-    cursor.execute("UPDATE tasks SET is_done = NOT is_done WHERE id=?", (id,))
+    cursor.execute("UPDATE tasks SET is_done = NOT is_done WHERE id=%s", (id,))
     db.commit()
     cursor.close()
     db.close()
@@ -536,7 +538,7 @@ def toggle_task(id, event_id):
 def delete_task(id, event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM tasks WHERE id=?", (id,))
+    cursor.execute("DELETE FROM tasks WHERE id=%s", (id,))
     db.commit()
     cursor.close()
     db.close()
@@ -547,7 +549,7 @@ def delete_task(id, event_id):
 def delete_event(id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM events WHERE id=? AND user_id=?", (id, session["user"]))
+    cursor.execute("DELETE FROM events WHERE id=%s AND user_id=%s", (id, session["user"]))
     db.commit()
     cursor.close()
     db.close()
@@ -557,7 +559,7 @@ def delete_event(id):
 def delete_expense(id, event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM expenses WHERE id=?", (id,))
+    cursor.execute("DELETE FROM expenses WHERE id=%s", (id,))
     db.commit()
     cursor.close()
     db.close()
@@ -580,7 +582,7 @@ def vendors():
     cursor = db.cursor()
     
     if category and category != "All":
-        cursor.execute("SELECT * FROM vendors WHERE category=?", (category,))
+        cursor.execute("SELECT * FROM vendors WHERE category=%s", (category,))
     else:
         cursor.execute("SELECT * FROM vendors")
         
@@ -604,7 +606,7 @@ def vendors():
 def add_guest(event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("INSERT INTO guests (event_id, name, notes) VALUES (?, ?, ?)",
+    cursor.execute("INSERT INTO guests (event_id, name, notes) VALUES (%s, %s, %s)",
                    (event_id, request.form["name"], request.form["notes"]))
     db.commit()
     cursor.close()
@@ -615,7 +617,7 @@ def add_guest(event_id):
 def update_guest_status(id, event_id, status):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("UPDATE guests SET status=? WHERE id=?", (status, id))
+    cursor.execute("UPDATE guests SET status=%s WHERE id=%s", (status, id))
     db.commit()
     cursor.close()
     db.close()
@@ -625,7 +627,7 @@ def update_guest_status(id, event_id, status):
 def delete_guest(id, event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM guests WHERE id=?", (id,))
+    cursor.execute("DELETE FROM guests WHERE id=%s", (id,))
     db.commit()
     cursor.close()
     db.close()
@@ -636,7 +638,7 @@ def delete_guest(id, event_id):
 def add_timeline(event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("INSERT INTO timeline (event_id, time, activity, notes) VALUES (?, ?, ?, ?)",
+    cursor.execute("INSERT INTO timeline (event_id, time, activity, notes) VALUES (%s, %s, %s, %s)",
                    (event_id, request.form["time"], request.form["activity"], request.form["notes"]))
     db.commit()
     cursor.close()
@@ -647,7 +649,7 @@ def add_timeline(event_id):
 def delete_timeline(id, event_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM timeline WHERE id=?", (id,))
+    cursor.execute("DELETE FROM timeline WHERE id=%s", (id,))
     db.commit()
     cursor.close()
     db.close()
@@ -658,11 +660,11 @@ def delete_timeline(id, event_id):
 def link_vendor(v_id, e_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT name, category, price FROM vendors WHERE id=?", (v_id,))
+    cursor.execute("SELECT name, category, price FROM vendors WHERE id=%s", (v_id,))
     vendor = cursor.fetchone()
     if vendor:
         cursor.execute(
-            "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (%s, %s, %s, %s, %s)",
             (vendor[1], vendor[0], vendor[2], e_id, v_id)
         )
         db.commit()
@@ -678,11 +680,11 @@ def link_vendors_bulk():
     db = get_db()
     cursor = db.cursor()
     for v_id in vendor_ids:
-        cursor.execute("SELECT name, category, price FROM vendors WHERE id=?", (v_id,))
+        cursor.execute("SELECT name, category, price FROM vendors WHERE id=%s", (v_id,))
         vendor = cursor.fetchone()
         if vendor:
             cursor.execute(
-                "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (%s, %s, %s, %s, %s)",
                 (vendor[1], vendor[0], vendor[2], event_id, v_id)
             )
     db.commit()
@@ -696,13 +698,13 @@ def vendor_details_view(id):
     if "user" not in session: return redirect("/")
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT * FROM vendors WHERE id=?", (id,))
+    cursor.execute("SELECT * FROM vendors WHERE id=%s", (id,))
     vendor = cursor.fetchone()
-    cursor.execute("SELECT vendor_reviews.*, users.phone FROM vendor_reviews JOIN users ON vendor_reviews.user_id = users.id WHERE vendor_id=? ORDER BY created_at DESC", (id,))
+    cursor.execute("SELECT vendor_reviews.*, users.phone FROM vendor_reviews JOIN users ON vendor_reviews.user_id = users.id WHERE vendor_id=%s ORDER BY created_at DESC", (id,))
     reviews = cursor.fetchall()
     
     # Get user events for booking dropdown
-    cursor.execute("SELECT id, name FROM events WHERE user_id=?", (session["user"],))
+    cursor.execute("SELECT id, name FROM events WHERE user_id=%s", (session["user"],))
     events = cursor.fetchall()
     
     cursor.close()
@@ -714,7 +716,7 @@ def add_review(v_id):
     if "user" not in session: return redirect("/")
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("INSERT INTO vendor_reviews (vendor_id, user_id, rating, comment) VALUES (?, ?, ?, ?)",
+    cursor.execute("INSERT INTO vendor_reviews (vendor_id, user_id, rating, comment) VALUES (%s, %s, %s, %s)",
                    (v_id, session["user"], request.form["rating"], request.form["comment"]))
     db.commit()
     cursor.close()
@@ -735,14 +737,14 @@ def book_vendor():
     # Create Booking Record
     cursor.execute("""
         INSERT INTO bookings (user_id, event_id, vendor_id, total_amount, advance_paid, status)
-        VALUES (?, ?, ?, ?, ?, 'Confirmed')
+        VALUES (%s, %s, %s, %s, %s, 'Confirmed')
     """, (session["user"], e_id, v_id, amount, advance))
     
     # Also add to expenses automatically
-    cursor.execute("SELECT name, category FROM vendors WHERE id=?", (v_id,))
+    cursor.execute("SELECT name, category FROM vendors WHERE id=%s", (v_id,))
     vendor = cursor.fetchone()
     cursor.execute(
-        "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO expenses (category, item, amount, event_id, vendor_id) VALUES (%s, %s, %s, %s, %s)",
         (vendor[1], vendor[0], amount, e_id, v_id)
     )
     
@@ -760,7 +762,7 @@ def view_bookings():
         SELECT bookings.*, vendors.name, vendors.category, vendors.image_url 
         FROM bookings 
         JOIN vendors ON bookings.vendor_id = vendors.id 
-        WHERE bookings.user_id = ? ORDER BY bookings.created_at DESC
+        WHERE bookings.user_id = %s ORDER BY bookings.created_at DESC
     """, (session["user"],))
     bookings_list = cursor.fetchall()
     cursor.close()
@@ -774,12 +776,12 @@ def cancel_booking(id):
     cursor = db.cursor()
     
     # Get advance amount for the message
-    cursor.execute("SELECT advance_paid FROM bookings WHERE id=?", (id,))
+    cursor.execute("SELECT advance_paid FROM bookings WHERE id=%s", (id,))
     booking = cursor.fetchone()
     
     if booking:
         advance = booking[0]
-        cursor.execute("DELETE FROM bookings WHERE id=? AND user_id=?", (id, session["user"]))
+        cursor.execute("DELETE FROM bookings WHERE id=%s AND user_id=%s", (id, session["user"]))
         db.commit()
         flash(f"Booking removed successfully! Your advance payment of ₹{advance} will be refunded to your original payment method within 24 hours.", "success")
     
@@ -795,7 +797,7 @@ def generate_smart_budget(event_id):
     cursor = db.cursor()
     
     # 1. Get Event Details
-    cursor.execute("SELECT type, budget FROM events WHERE id=? AND user_id=?", (event_id, session["user"]))
+    cursor.execute("SELECT type, budget FROM events WHERE id=%s AND user_id=%s", (event_id, session["user"]))
     event = cursor.fetchone()
     
     if not event:
@@ -831,7 +833,7 @@ def generate_smart_budget(event_id):
         ]
         
     # 3. Clear existing auto-generated or all expenses (optional, let's just insert new ones if empty)
-    cursor.execute("SELECT COUNT(*) FROM expenses WHERE event_id=?", (event_id,))
+    cursor.execute("SELECT COUNT(*) FROM expenses WHERE event_id=%s", (event_id,))
     count = cursor.fetchone()[0]
     
     if count > 0:
@@ -843,7 +845,7 @@ def generate_smart_budget(event_id):
     for category, item, ratio in allocations:
         amount = total_budget * ratio
         cursor.execute(
-            "INSERT INTO expenses (category, item, amount, event_id) VALUES (?, ?, ?, ?)",
+            "INSERT INTO expenses (category, item, amount, event_id) VALUES (%s, %s, %s, %s)",
             (category, item, amount, event_id)
         )
         
