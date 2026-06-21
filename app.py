@@ -473,7 +473,7 @@ def update_booking_status(id, status):
 # CREATE EVENT
 @app.route("/create_event", methods=["GET", "POST"])
 def create_event():
-    if "user_id" not in session:
+    if "user" not in session:
         return redirect("/")
         
     if request.method == "POST":
@@ -481,7 +481,7 @@ def create_event():
         cursor = db.cursor()
         cursor.execute(
             "INSERT INTO events (name, type, budget, user_id) VALUES (%s, %s, %s, %s)",
-            (request.form["event_name"], request.form["event_type"], request.form["budget"], session["user_id"])
+            (request.form["event_name"], request.form["event_type"], request.form["budget"], session["user"])
         )
         db.commit()
         cursor.close()
