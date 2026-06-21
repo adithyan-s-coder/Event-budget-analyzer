@@ -1,9 +1,8 @@
 import sqlite3
 import os
 
-def init_db():
+def init_db(db_path="event_app.db"):
     print("Initializing SQLite Database...")
-    db_path = "event_app.db"
     
     # Remove old DB if we want a fresh start (optional, but good for this setup script)
     if os.path.exists(db_path):

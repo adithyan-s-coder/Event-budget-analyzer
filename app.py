@@ -7,8 +7,13 @@ app = Flask(__name__)
 app.secret_key = "secret123"
 
 # DATABASE CONNECTION
+DB_PATH = "/tmp/event_app.db" if os.environ.get("VERCEL") else "event_app.db"
+
 def get_db():
-    return sqlite3.connect("event_app.db")
+    if not os.path.exists(DB_PATH):
+        import init_db
+        init_db.init_db(DB_PATH)
+    return sqlite3.connect(DB_PATH)
 
 # LOGIN
 @app.route("/")
