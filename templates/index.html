@@ -137,11 +137,12 @@
             box-shadow: none !important;
         }
         
-        /* Force any font tags injected by Google to be transparent */
+        /* Force any font tags injected by Google to be transparent and unhoverable */
         font {
             background: transparent !important;
             background-color: transparent !important;
             box-shadow: none !important;
+            pointer-events: none !important; /* This completely prevents the hover bug */
         }
         
         /* Adjust font sizes when page is translated to prevent layout breaking */
@@ -578,11 +579,11 @@
                 <button id="lang-btn" class="lang-btn"><i class="fas fa-globe"></i></button>
                 <div id="lang-dropdown" class="lang-dropdown">
                     <a href="#" data-lang="en">🇬🇧 English</a>
-                    <a href="#" data-lang="ta">🇮🇳 Tamil</a>
-                    <a href="#" data-lang="hi">🇮🇳 Hindi</a>
-                    <a href="#" data-lang="es">🇪🇸 Spanish</a>
-                    <a href="#" data-lang="fr">🇫🇷 French</a>
-                    <a href="#" data-lang="ar">🇦🇪 Arabic</a>
+                    <a href="#" data-lang="ta">🇮🇳 தமிழ் (Tamil)</a>
+                    <a href="#" data-lang="hi">🇮🇳 हिन्दी (Hindi)</a>
+                    <a href="#" data-lang="es">🇪🇸 Español</a>
+                    <a href="#" data-lang="fr">🇫🇷 Français</a>
+                    <a href="#" data-lang="ar">🇦🇪 العربية</a>
                 </div>
             </div>
             <!-- Hidden Google Widget -->
