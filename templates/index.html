@@ -784,18 +784,29 @@
             const utterance = new SpeechSynthesisUtterance(textToRead);
             utterance.rate = 0.9;
             
-            // Detect the current language from Google Translate combo
-            const combo = document.querySelector('.goog-te-combo');
-            if (combo && combo.value) {
-                utterance.lang = combo.value;
-            } else {
-                utterance.lang = 'en';
+            // Detect current language from Google Translate cookie
+            let currentLang = 'en';
+            const match = document.cookie.match(/googtrans=\/en\/([a-z\-]+)/);
+            if (match && match[1]) {
+                currentLang = match[1];
             }
+            
+            // Map 2-letter codes to full BCP 47 language tags for Speech API
+            const langMap = {
+                'ta': 'ta-IN',
+                'hi': 'hi-IN',
+                'es': 'es-ES',
+                'fr': 'fr-FR',
+                'ar': 'ar-SA',
+                'en': 'en-US'
+            };
+            
+            utterance.lang = langMap[currentLang] || currentLang;
 
             // Find a matching voice for the language
             const voices = window.speechSynthesis.getVoices();
-            const langPrefix = utterance.lang.split('-')[0].toLowerCase();
-            const bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+            const bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLang.toLowerCase()));
+            
             if (bestVoice) {
                 utterance.voice = bestVoice;
             }
