@@ -429,7 +429,7 @@ def vendor_register():
         
     return redirect(url_for("login"))
 
-import requests
+import urllib.request
 import urllib.parse
 from flask import Response
 
@@ -442,10 +442,12 @@ def tts_proxy():
     
     url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl={lang}&client=tw-ob&q={urllib.parse.quote(text)}"
     try:
-        # User-Agent ensures Google doesn't block the request, and no Referer is sent!
-        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-        if r.status_code == 200:
-            return Response(r.content, mimetype="audio/mpeg")
+        # Use built-in urllib to avoid external dependencies crashing Vercel
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(req) as response:
+            if response.status == 200:
+                audio_data = response.read()
+                return Response(audio_data, mimetype="audio/mpeg")
     except Exception as e:
         print("TTS Error:", e)
     
