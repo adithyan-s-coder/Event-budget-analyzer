@@ -243,11 +243,125 @@
             line-height: 1.6;
         }
 
+        /* Steps Section */
+        .steps-section {
+            padding: 6rem 5%;
+            background: #000;
+            position: relative;
+        }
+
+        .step-container {
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 2rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .step-item:hover {
+            transform: translateX(10px);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .step-number {
+            font-size: 3rem;
+            font-weight: 900;
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            min-width: 50px;
+        }
+
+        .step-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .step-content p {
+            color: #a1a1aa;
+            line-height: 1.6;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 6rem 5%;
+            background: linear-gradient(180deg, #050505 0%, #1a1a2e 100%);
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .cta-box {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 4rem 2rem;
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, rgba(0,0,0,0) 60%);
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .cta-box h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-box p {
+            color: #a1a1aa;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-box .btn-signup {
+            font-size: 1.2rem;
+            padding: 1rem 3rem;
+            display: inline-block;
+            position: relative;
+            z-index: 1;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
             padding: 3rem 5%;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: #000;
             color: #a1a1aa;
             font-size: 0.9rem;
         }
@@ -326,6 +440,44 @@
                 <h3>Event Timeline</h3>
                 <p>Organize the flow of your special day. Create detailed itineraries so vendors and guests know exactly what happens when.</p>
             </div>
+        </div>
+    </section>
+
+    <section class="steps-section">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>From planning to execution in three simple steps.</p>
+        </div>
+        <div class="step-container">
+            <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Set Your Baseline</h3>
+                    <p>Enter your total event budget and invite collaborators. Our AI will automatically suggest budget allocations across different categories like catering, venue, and decor based on industry standards.</p>
+                </div>
+            </div>
+            <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Discover & Book Vendors</h3>
+                    <p>Explore our curated marketplace of premium vendors. Read reviews, compare packages, and pay advances securely through our platform to lock in your dates.</p>
+                </div>
+            </div>
+            <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Track & Celebrate</h3>
+                    <p>Log your expenses as they happen. Watch your dashboard update in real-time with remaining balances and AI predictions, ensuring you enjoy your big day without financial worries.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="cta-box">
+            <h2>Ready to plan your perfect event?</h2>
+            <p>Join thousands of happy users who brought their dream events to life without breaking the bank.</p>
+            <a href="/register" class="btn-signup">Create Your Free Account</a>
         </div>
     </section>
 
