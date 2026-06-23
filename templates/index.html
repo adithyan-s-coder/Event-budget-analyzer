@@ -780,67 +780,82 @@
 
         // Localized AI Voice for 'How It Works'
         document.getElementById('read-steps-btn').addEventListener('click', function() {
-            window.speechSynthesis.cancel(); // Stop any ongoing speech
+            // Stop any ongoing native speech
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+            }
+            // Stop any ongoing MP3 speech
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+            }
             
             // Gather translated text from the steps
             let textToRead = "";
             document.querySelectorAll('.step-content').forEach(step => {
-                // innerText gets the currently visible translated text
                 textToRead += step.innerText + ". "; 
             });
 
-            const utterance = new SpeechSynthesisUtterance(textToRead);
-            utterance.rate = 0.9;
-            
             // Robustly detect current language
             let currentLang = 'en';
-            
-            // Method 1: Check HTML lang attribute (Google Translate updates this)
             const htmlLang = document.documentElement.lang;
             if (htmlLang && htmlLang !== 'en') {
                 currentLang = htmlLang;
             } else {
-                // Method 2: Check hidden combo box
                 const combo = document.querySelector('.goog-te-combo');
                 if (combo && combo.value) {
                     currentLang = combo.value;
                 } else {
-                    // Method 3: Check translation cookie (matches /en/ta or /auto/ta)
                     const match = document.cookie.match(/googtrans=\/[^\/]+\/([a-z\-]+)/);
                     if (match && match[1]) {
                         currentLang = match[1];
                     }
                 }
             }
-            
-            // Map 2-letter codes to full BCP 47 language tags for Speech API
-            const langMap = {
-                'ta': 'ta-IN',
-                'hi': 'hi-IN',
-                'es': 'es-ES',
-                'fr': 'fr-FR',
-                'ar': 'ar-SA',
-                'en': 'en-US'
-            };
-            
-            utterance.lang = langMap[currentLang] || currentLang;
 
-            // Find a matching voice for the language
-            const voices = window.speechSynthesis.getVoices();
+            // Clean up text
+            textToRead = textToRead.replace(/\n/g, ' ').replace(/\s+/g, ' ');
             
-            // Prefer Google's high quality network voices if available
-            let bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLang.toLowerCase()) && v.name.includes('Google'));
+            // The user's device might lack a native TTS voice for Tamil/Hindi, causing it to skip 
+            // the foreign characters and only say English words like "AI".
+            // To fix this 100% reliably, we bypass the device entirely and stream the premium MP3 
+            // directly from Google's servers in chunks (to bypass the 200 character limit).
             
-            // Fallback to any local voice matching the language
-            if (!bestVoice) {
-                bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLang.toLowerCase()));
+            let chunks = [];
+            let words = textToRead.split(' ');
+            let currentChunk = '';
+            
+            words.forEach(word => {
+                // 150 chars is a safe limit below Google's 200 char hard limit
+                if (currentChunk.length + word.length > 150) {
+                    chunks.push(currentChunk.trim());
+                    currentChunk = word + ' ';
+                } else {
+                    currentChunk += word + ' ';
+                }
+            });
+            if (currentChunk) {
+                chunks.push(currentChunk.trim());
             }
             
-            if (bestVoice) {
-                utterance.voice = bestVoice;
+            let chunkIndex = 0;
+            function playNextChunk() {
+                if (chunkIndex >= chunks.length) return;
+                
+                // Get the direct MP3 from Google Translate servers
+                const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${currentLang}&client=tw-ob&q=${encodeURIComponent(chunks[chunkIndex])}`;
+                const audio = new Audio(url);
+                window.currentAudio = audio;
+                
+                audio.onended = playNextChunk;
+                audio.play().catch(e => {
+                    console.error("Premium Audio API failed, trying to skip chunk...", e);
+                    playNextChunk();
+                });
+                
+                chunkIndex++;
             }
-
-            window.speechSynthesis.speak(utterance);
+            
+            playNextChunk();
         });
 
         // Ensure voices load
