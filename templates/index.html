@@ -770,6 +770,14 @@
             });
         });
 
+        // Pre-fetch voices on load to avoid mobile empty voices bug
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = function() {
+                window.speechSynthesis.getVoices();
+            };
+            window.speechSynthesis.getVoices();
+        }
+
         // Localized AI Voice for 'How It Works'
         document.getElementById('read-steps-btn').addEventListener('click', function() {
             window.speechSynthesis.cancel(); // Stop any ongoing speech
@@ -784,11 +792,25 @@
             const utterance = new SpeechSynthesisUtterance(textToRead);
             utterance.rate = 0.9;
             
-            // Detect current language from Google Translate cookie
+            // Robustly detect current language
             let currentLang = 'en';
-            const match = document.cookie.match(/googtrans=\/en\/([a-z\-]+)/);
-            if (match && match[1]) {
-                currentLang = match[1];
+            
+            // Method 1: Check HTML lang attribute (Google Translate updates this)
+            const htmlLang = document.documentElement.lang;
+            if (htmlLang && htmlLang !== 'en') {
+                currentLang = htmlLang;
+            } else {
+                // Method 2: Check hidden combo box
+                const combo = document.querySelector('.goog-te-combo');
+                if (combo && combo.value) {
+                    currentLang = combo.value;
+                } else {
+                    // Method 3: Check translation cookie (matches /en/ta or /auto/ta)
+                    const match = document.cookie.match(/googtrans=\/[^\/]+\/([a-z\-]+)/);
+                    if (match && match[1]) {
+                        currentLang = match[1];
+                    }
+                }
             }
             
             // Map 2-letter codes to full BCP 47 language tags for Speech API
@@ -805,7 +827,14 @@
 
             // Find a matching voice for the language
             const voices = window.speechSynthesis.getVoices();
-            const bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLang.toLowerCase()));
+            
+            // Prefer Google's high quality network voices if available
+            let bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLang.toLowerCase()) && v.name.includes('Google'));
+            
+            // Fallback to any local voice matching the language
+            if (!bestVoice) {
+                bestVoice = voices.find(v => v.lang.toLowerCase().startsWith(currentLang.toLowerCase()));
+            }
             
             if (bestVoice) {
                 utterance.voice = bestVoice;
