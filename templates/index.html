@@ -397,23 +397,40 @@
         @media (max-width: 768px) {
             .landing-header {
                 padding: 1rem 5%;
+                gap: 10px;
             }
             .landing-logo {
-                font-size: 1.4rem;
-                gap: 8px;
+                font-size: 1.2rem;
+                gap: 6px;
             }
             .landing-logo img {
-                height: 28px;
-                width: 28px;
+                height: 24px;
+                width: 24px;
+            }
+            .nav-buttons {
+                display: flex;
+                align-items: center;
+                gap: 5px;
             }
             .btn-login {
-                display: none; /* Simplify nav on mobile */
+                padding: 0.5rem 0.5rem;
+                font-size: 0.85rem;
+                white-space: nowrap;
             }
             .btn-signup {
                 padding: 0.5rem 1rem;
                 font-size: 0.85rem;
                 white-space: nowrap;
                 margin-left: 0;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .landing-logo span {
+                display: none; /* Hide the text on extremely small screens to fit buttons */
+            }
+            .btn-login {
+                padding: 0.5rem;
             }
         }
     </style>
@@ -423,7 +440,7 @@
     <header class="landing-header">
         <a href="/" class="landing-logo">
             <img src="{{ url_for('static', filename='img/event-budget-analyser-logo.svg') }}" alt="BudgetCrafter Logo">
-            BudgetCrafter
+            <span>BudgetCrafter</span>
         </a>
         <div class="nav-buttons">
             <a href="/login" class="btn-login">Log In</a>
