@@ -27,7 +27,7 @@ def get_db():
 def home():
     if "user" in session:
         return redirect("/dashboard")
-    return render_template("login.html")
+    return render_template("index.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
