@@ -369,6 +369,21 @@
             background: #f8fafc;
         }
 
+        /* Scroll Reveal Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .feature-card.reveal { transition-delay: calc(var(--delay) * 0.1s); }
+        .step-item.reveal { transition-delay: calc(var(--delay) * 0.15s); }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -412,43 +427,43 @@
     </section>
 
     <section class="features-section">
-        <div class="section-header">
+        <div class="section-header reveal">
             <h2>Why Choose BudgetCrafter?</h2>
             <p>Everything you need to orchestrate a flawless event.</p>
         </div>
         
         <div class="feature-grid">
-            <div class="feature-card">
+            <div class="feature-card reveal" style="--delay: 1;">
                 <div class="feature-icon"><i class="fas fa-chart-pie"></i></div>
                 <h3>Smart Budget Tracking</h3>
                 <p>Monitor your total spend, advances, and remaining balances in real-time with beautiful, easy-to-read financial dashboards.</p>
             </div>
             
-            <div class="feature-card">
+            <div class="feature-card reveal" style="--delay: 2;">
                 <div class="feature-icon"><i class="fas fa-store"></i></div>
                 <h3>Premium Vendor Marketplace</h3>
                 <p>Browse, compare, and book top-rated photographers, decorators, and caterers directly from our verified vendor network.</p>
             </div>
             
-            <div class="feature-card">
+            <div class="feature-card reveal" style="--delay: 3;">
                 <div class="feature-icon"><i class="fas fa-robot"></i></div>
                 <h3>AI Cost Projections</h3>
                 <p>Our intelligent algorithms predict potential cost overruns based on your spending velocity, helping you stay out of the red.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal" style="--delay: 4;">
                 <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
                 <h3>Escrow Protection</h3>
                 <p>Secure your bookings with integrated payments. We ensure your funds are safe until the vendor delivers their services.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal" style="--delay: 5;">
                 <div class="feature-icon"><i class="fas fa-users"></i></div>
                 <h3>Guest List Management</h3>
                 <p>Keep track of invitations, RSVPs, and guest counts to ensure you only pay for the plates you actually need.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal" style="--delay: 6;">
                 <div class="feature-icon"><i class="fas fa-clock"></i></div>
                 <h3>Event Timeline</h3>
                 <p>Organize the flow of your special day. Create detailed itineraries so vendors and guests know exactly what happens when.</p>
@@ -457,26 +472,26 @@
     </section>
 
     <section class="steps-section">
-        <div class="section-header">
+        <div class="section-header reveal">
             <h2>How It Works</h2>
             <p>From planning to execution in three simple steps.</p>
         </div>
         <div class="step-container">
-            <div class="step-item">
+            <div class="step-item reveal" style="--delay: 1;">
                 <div class="step-number">1</div>
                 <div class="step-content">
                     <h3>Set Your Baseline</h3>
                     <p>Enter your total event budget and invite collaborators. Our AI will automatically suggest budget allocations across different categories like catering, venue, and decor based on industry standards.</p>
                 </div>
             </div>
-            <div class="step-item">
+            <div class="step-item reveal" style="--delay: 2;">
                 <div class="step-number">2</div>
                 <div class="step-content">
                     <h3>Discover & Book Vendors</h3>
                     <p>Explore our curated marketplace of premium vendors. Read reviews, compare packages, and pay advances securely through our platform to lock in your dates.</p>
                 </div>
             </div>
-            <div class="step-item">
+            <div class="step-item reveal" style="--delay: 3;">
                 <div class="step-number">3</div>
                 <div class="step-content">
                     <h3>Track & Celebrate</h3>
@@ -487,7 +502,7 @@
     </section>
 
     <section class="cta-section">
-        <div class="cta-box">
+        <div class="cta-box reveal">
             <h2>Ready to plan your perfect event?</h2>
             <p>Join thousands of happy users who brought their dream events to life without breaking the bank.</p>
             <a href="/register" class="cta-btn">Create Your Free Account</a>
@@ -498,5 +513,26 @@
         <p>&copy; 2026 BudgetCrafter. All rights reserved.</p>
     </footer>
 
+    <script>
+        // Scroll Reveal Observer
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.15
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach((el) => {
+            observer.observe(el);
+        });
+    </script>
 </body>
 </html>
